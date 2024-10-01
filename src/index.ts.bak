@@ -1,0 +1,88 @@
+// File: src/index.ts
+
+import {
+  // Keypair,
+  Connection,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+} from "@solana/web3.js";
+
+async function main() {
+  // Check if we have the correct number of arguments
+  if (process.argv.length !== 5) {
+    console.error(
+      "Usage: npm start <sender_address> <recipient_address> <amount_in_lamports>",
+    );
+    process.exit(1);
+  }
+
+  const [, , senderAddress, recipientAddress, amountInLamports] = process.argv;
+
+  // Validate input
+  if (
+    !PublicKey.isOnCurve(senderAddress) ||
+    !PublicKey.isOnCurve(recipientAddress)
+  ) {
+    console.error("Invalid Solana address provided");
+    process.exit(1);
+  }
+
+  const amount = parseInt(amountInLamports, 10);
+  if (isNaN(amount) || amount <= 0) {
+    console.error("Invalid amount provided");
+    process.exit(1);
+  }
+
+  // Connect to the Solana devnet
+  const connection = new Connection(
+    "https://api.devnet.solana.com",
+    "confirmed",
+  );
+
+  // Create PublicKey objects
+  const senderPublicKey = new PublicKey(senderAddress);
+  const recipientPublicKey = new PublicKey(recipientAddress);
+
+  // Create a simple transfer instruction
+  const instruction = SystemProgram.transfer({
+    fromPubkey: senderPublicKey,
+    toPubkey: recipientPublicKey,
+    lamports: amount,
+  });
+
+  // Get the latest blockhash
+  const { blockhash } = await connection.getLatestBlockhash();
+
+  // Create a new transaction and add the instruction
+  const transaction = new Transaction().add(instruction);
+
+  // Set the recent blockhash and the paying account
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = senderPublicKey;
+
+  // Serialize the transaction
+  const serializedTransaction = transaction.serialize({
+    requireAllSignatures: false,
+    verifySignatures: false,
+  });
+
+  // Create JSON output
+  const output = {
+    sender: senderAddress,
+    recipient: recipientAddress,
+    amount_in_lamports: amount,
+    unsigned_transaction: {
+      base64: serializedTransaction.toString("base64"),
+      hex: serializedTransaction.toString("hex"),
+    },
+  };
+
+  // Output as formatted JSON
+  console.log(JSON.stringify(output, null, 2));
+}
+
+main().catch((error) => {
+  console.error("An error occurred:", error);
+  process.exit(1);
+});
