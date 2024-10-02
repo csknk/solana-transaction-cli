@@ -31,8 +31,9 @@ async function main() {
     }
 
     // NOTE: connect to correct network for valid blockhash
+    // Alternative endpoint: "https://api.devnet.solana.com",
     const connection = new Connection(
-      "https://api.devnet.solana.com",
+      "https://light-quiet-season.solana-devnet.quiknode.pro/0e21d241e5ff40c4696de30ee2d62857bc2262b9/",
       "confirmed",
     );
 
@@ -43,7 +44,9 @@ async function main() {
       toPubkey: recipientPublicKey,
       lamports: amount,
     });
-    const { blockhash } = await connection.getLatestBlockhash();
+
+    // NOTE: Recent blockhash may be a source of bugs...if blockhash is older than 150 blocks tx is invalid
+    const { blockhash } = await connection.getLatestBlockhash("finalized");
 
     // Create a new transaction and add the instruction
     const transaction = new Transaction().add(instruction);
@@ -58,6 +61,7 @@ async function main() {
       sender: senderAddress,
       recipient: recipientAddress,
       amount_in_lamports: amount,
+      blockhash: blockhash,
       unsigned_transaction: {
         base64: serializedTransaction.toString("base64"),
         hex: serializedTransaction.toString("hex"),
